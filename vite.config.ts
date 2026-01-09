@@ -6,14 +6,14 @@ export default defineConfig({
   plugins: [react()],
   base: './',
   css: {
-    preprocessorOptions: {
-      scss: {
-        additionalData: `
-          @use '@css/abstracts' as *;
-        `,
-        api: 'modern-compiler',
-      },
-    },
+    // preprocessorOptions: {
+    //   scss: {
+    //     additionalData: `
+    //       @use '@css/abstracts' as *;
+    //     `,
+    //     api: 'modern-compiler',
+    //   },
+    // },
   },
   server: {
     port: 2000,
