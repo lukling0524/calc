@@ -1,92 +1,126 @@
-.wrapper {
-  padding: 16px;
+.container {
   max-width: 480px;
   margin: 0 auto;
+  padding: 16px;
   background: #f1f3f5;
   min-height: 100vh;
+  font-family: -apple-system, sans-serif;
 
   .header {
     background: #fff;
     padding: 20px;
     border-radius: 16px;
     margin-bottom: 16px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-
-    h1 {
-      font-size: 1.1rem;
-      margin: 0 0 12px 0;
-      color: #333;
-    }
-    .status {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.95rem;
-      .complete {
-        color: #0ca678;
-      }
-    }
-  }
-
-  .card {
-    background: #fff;
-    padding: 16px;
-    border-radius: 12px;
-    margin-bottom: 12px;
-
-    .row {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    .topBar {
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 12px;
-    }
-
-    .dayLabel {
-      font-weight: 700;
-      font-size: 1.1rem;
-    }
-
-    .controls {
-      display: flex;
-      gap: 8px;
-      select,
-      button {
-        padding: 6px 10px;
-        border-radius: 6px;
-        border: 1px solid #dee2e6;
-        background: #fff;
-        font-size: 0.85rem;
+      h1 {
+        font-size: 1.1rem;
+        margin: 0;
+      }
+      .resetBtn {
+        background: none;
+        border: none;
+        color: #ff6b6b;
+        font-weight: bold;
+        font-size: 0.8rem;
       }
     }
-
-    .timeInputs {
+    .summary {
       display: flex;
-      align-items: center;
-      gap: 8px;
-      input {
+      gap: 20px;
+      .stat {
         flex: 1;
-        padding: 10px;
-        border: 1px solid #ced4da;
-        border-radius: 8px;
-        font-size: 1rem;
+        display: flex;
+        flex-direction: column;
+        span {
+          font-size: 0.75rem;
+          color: #868e96;
+          margin-bottom: 4px;
+        }
+        strong {
+          font-size: 0.95rem;
+          &.done {
+            color: #2f9e44;
+          }
+        }
       }
-    }
-
-    .daySubtotal {
-      margin-top: 10px;
-      font-size: 0.8rem;
-      color: #868e96;
-      text-align: right;
     }
   }
 
-  .resetBtn {
-    width: 100%;
-    margin-top: 20px;
-    padding: 14px;
-    border: none;
-    border-radius: 12px;
-    background: #fa5252;
-    color: white;
-    font-weight: 600;
+  .dayCard {
+    background: #fff;
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
+    .cardHeader {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      .dayLabel {
+        font-weight: bold;
+      }
+      .actions {
+        display: flex;
+        gap: 6px;
+        select,
+        .modeBtn {
+          padding: 4px 8px;
+          border-radius: 6px;
+          border: 1px solid #dee2e6;
+          font-size: 0.75rem;
+          background: #fff;
+        }
+      }
+    }
+    .inputBody {
+      .rangeRow {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        .timeInputs {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 8px;
+            font-size: 1rem;
+          }
+        }
+        .fitBtn {
+          width: 100%;
+          padding: 8px;
+          background: #339af0;
+          color: #fff;
+          border: none;
+          border-radius: 8px;
+          font-weight: bold;
+          font-size: 0.85rem;
+        }
+      }
+      .manualInputs {
+        display: flex;
+        gap: 8px;
+        input {
+          flex: 1;
+          padding: 10px;
+          border: 1px solid #ced4da;
+          border-radius: 8px;
+        }
+      }
+    }
+    .subtotal {
+      margin-top: 12px;
+      text-align: right;
+      font-size: 0.8rem;
+      color: #868e96;
+    }
   }
 }

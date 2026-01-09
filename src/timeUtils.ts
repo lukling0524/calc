@@ -26,29 +26,30 @@ export const formatMinutesToKorean = (totalMinutes: number): string => {
   return '0분';
 };
 
+// 일일 인정 시간 계산 (휴가 + 실근무, 최대 9시간 절삭)
 export const getDailyMinutes = (data: DayWorkData): number => {
+  let leaveCredit = 0;
   if (data.leaveType === 'annual') return 8 * 60;
-  if (data.leaveType === 'half') return 4 * 60;
-  if (data.leaveType === 'half-half') return 2 * 60;
+  if (data.leaveType === 'half') leaveCredit = 4 * 60;
+  if (data.leaveType === 'half-half') leaveCredit = 2 * 60;
 
-  // 직접 입력 모드: 시간과 분을 합산 후 9시간 절삭
+  let workMinutes = 0;
   if (data.mode === 'manual') {
-    const h = parseInt(data.manualHours || '0');
-    const m = parseInt(data.manualMinutes || '0');
-    return Math.min(MAX_DAILY_MINS, h * 60 + m);
+    workMinutes = parseInt(data.manualHours || '0') * 60 + parseInt(data.manualMinutes || '0');
+  } else {
+    const start = timeToMinutes(data.start);
+    const end = timeToMinutes(data.end);
+    if (end > start) {
+      workMinutes = end - start;
+      if (start < LUNCH_END && end > LUNCH_START) workMinutes -= 60;
+    }
   }
 
-  const start = timeToMinutes(data.start);
-  const end = timeToMinutes(data.end);
-  if (end <= start) return 0;
-
-  let duration = end - start;
-  if (start < LUNCH_END && end > LUNCH_START) {
-    duration -= 60;
-  }
-  return Math.min(MAX_DAILY_MINS, Math.max(0, duration));
+  // 휴가 인정분 + 실제 근무분 합산 후 9시간(540분)으로 절삭
+  return Math.min(MAX_DAILY_MINS, leaveCredit + Math.max(0, workMinutes));
 };
 
+// 역산 시각 계산 (점심시간 보정 포함)
 export const calculateReverseTime = (
   baseTimeMins: number,
   targetMins: number,

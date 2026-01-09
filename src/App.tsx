@@ -11,7 +11,7 @@ import styles from './App.module.scss';
 
 const WorkCalculator: React.FC = () => {
   const [workData, setWorkData] = useState<DayWorkData[]>(() => {
-    const saved = localStorage.getItem('work_data_v3');
+    const saved = localStorage.getItem('work_calc_vfinal');
     return saved
       ? JSON.parse(saved)
       : DAYS.map((day) => ({
@@ -26,7 +26,7 @@ const WorkCalculator: React.FC = () => {
   });
 
   useEffect(() => {
-    localStorage.setItem('work_data_v3', JSON.stringify(workData));
+    localStorage.setItem('work_calc_vfinal', JSON.stringify(workData));
   }, [workData]);
 
   const totalMinutes = useMemo(() => {
@@ -43,31 +43,56 @@ const WorkCalculator: React.FC = () => {
 
     const otherFilledCount = newData.filter((d, i) => i !== idx && getDailyMinutes(d) > 0).length;
 
-    // 역산 로직 (4일치 입력 시 작동)
-    if (otherFilledCount === 4 && currentDay.leaveType === 'none') {
+    // 4일 입력 후 나머지 1일 자동 역산 (주 40시간 맞추기)
+    if (
+      otherFilledCount === 4 &&
+      currentDay.leaveType !== 'annual' &&
+      currentDay.mode === 'range'
+    ) {
       const otherTotal = newData.reduce(
         (acc, d, i) => (i === idx ? acc : acc + getDailyMinutes(d)),
         0
       );
-      const targetMins = Math.max(0, WEEKLY_GOAL_MINS - otherTotal);
+      let targetForTodayWork = Math.max(0, WEEKLY_GOAL_MINS - otherTotal);
 
-      // 시간 입력 모드일 때
-      if (currentDay.mode === 'range') {
-        if (updates.start) {
-          const startMins = timeToMinutes(updates.start);
-          newData[idx].end = minutesToTime(calculateReverseTime(startMins, targetMins, 'end'));
-        } else if (updates.end) {
-          const endMins = timeToMinutes(updates.end);
-          newData[idx].start = minutesToTime(calculateReverseTime(endMins, targetMins, 'start'));
-        }
-      }
-      // 직접 입력 모드일 때: 남은 시간을 자동으로 채워줌
-      else if (currentDay.mode === 'manual' && !updates.manualHours && !updates.manualMinutes) {
-        newData[idx].manualHours = Math.floor(targetMins / 60).toString();
-        newData[idx].manualMinutes = (targetMins % 60).toString();
+      if (currentDay.leaveType === 'half') targetForTodayWork -= 240;
+      if (currentDay.leaveType === 'half-half') targetForTodayWork -= 120;
+      targetForTodayWork = Math.max(0, targetForTodayWork);
+
+      if (updates.start) {
+        newData[idx].end = minutesToTime(
+          calculateReverseTime(timeToMinutes(updates.start), targetForTodayWork, 'end')
+        );
+      } else if (updates.end) {
+        newData[idx].start = minutesToTime(
+          calculateReverseTime(timeToMinutes(updates.end), targetForTodayWork, 'start')
+        );
       }
     }
+    setWorkData(newData);
+  };
 
+  // [8시간 계산] 버튼 로직: 오늘 총합(인정+실무)을 8시간(480분)으로 맞춤
+  const fitTo8Hours = (idx: number) => {
+    const data = workData[idx];
+    if (data.mode !== 'range' || data.leaveType === 'annual') return;
+
+    let leaveCredit = 0;
+    if (data.leaveType === 'half') leaveCredit = 240;
+    if (data.leaveType === 'half-half') leaveCredit = 120;
+
+    const neededWorkMins = Math.max(0, 480 - leaveCredit);
+    const newData = [...workData];
+
+    if (data.start) {
+      newData[idx].end = minutesToTime(
+        calculateReverseTime(timeToMinutes(data.start), neededWorkMins, 'end')
+      );
+    } else if (data.end) {
+      newData[idx].start = minutesToTime(
+        calculateReverseTime(timeToMinutes(data.end), neededWorkMins, 'start')
+      );
+    }
     setWorkData(newData);
   };
 
@@ -75,10 +100,10 @@ const WorkCalculator: React.FC = () => {
     <div className={styles.container}>
       <header className={styles.header}>
         <div className={styles.topBar}>
-          <h1>주간 업무 계산기</h1>
+          <h1>💬</h1>
           <button
             onClick={() => {
-              if (confirm('초기화하시겠습니까?')) {
+              if (confirm('초기화?')) {
                 localStorage.clear();
                 location.reload();
               }
@@ -88,15 +113,15 @@ const WorkCalculator: React.FC = () => {
             초기화
           </button>
         </div>
-        <div className={styles.summaryCard}>
+        <div className={styles.summary}>
           <div className={styles.stat}>
-            <span>이번 주 합계</span>
+            <span>합계</span>
             <strong>{formatMinutesToKorean(totalMinutes)}</strong>
           </div>
           <div className={styles.stat}>
             <span>남은 시간</span>
             <strong className={remainingMinutes === 0 ? styles.done : ''}>
-              {remainingMinutes === 0 ? '목표 달성!' : formatMinutesToKorean(remainingMinutes)}
+              {remainingMinutes === 0 ? '달성!' : formatMinutesToKorean(remainingMinutes)}
             </strong>
           </div>
         </div>
@@ -106,8 +131,8 @@ const WorkCalculator: React.FC = () => {
         {workData.map((data, idx) => (
           <div key={data.day} className={styles.dayCard}>
             <div className={styles.cardHeader}>
-              <span className={styles.dayName}>{data.day}요일</span>
-              <div className={styles.toggleGroup}>
+              <span className={styles.dayLabel}>{data.day}요일</span>
+              <div className={styles.actions}>
                 <select
                   value={data.leaveType}
                   onChange={(e) => handleUpdate(idx, { leaveType: e.target.value as LeaveType })}
@@ -118,57 +143,59 @@ const WorkCalculator: React.FC = () => {
                   <option value='half-half'>반반차</option>
                 </select>
                 <button
+                  className={styles.modeBtn}
                   onClick={() =>
                     handleUpdate(idx, { mode: data.mode === 'range' ? 'manual' : 'range' })
                   }
                 >
-                  {data.mode === 'range' ? '직접입력' : '시간입력'}
+                  {data.mode === 'range' ? '직접' : '시각'}
                 </button>
               </div>
             </div>
 
-            {data.leaveType === 'none' && (
+            {data.leaveType !== 'annual' && (
               <div className={styles.inputBody}>
                 {data.mode === 'range' ? (
-                  <div className={styles.timeGroup}>
-                    <input
-                      type='time'
-                      value={data.start}
-                      onChange={(e) => handleUpdate(idx, { start: e.target.value })}
-                    />
-                    <span>~</span>
-                    <input
-                      type='time'
-                      value={data.end}
-                      onChange={(e) => handleUpdate(idx, { end: e.target.value })}
-                    />
+                  <div className={styles.rangeRow}>
+                    <div className={styles.timeInputs}>
+                      <input
+                        type='time'
+                        value={data.start}
+                        onChange={(e) => handleUpdate(idx, { start: e.target.value })}
+                      />
+                      <span>~</span>
+                      <input
+                        type='time'
+                        value={data.end}
+                        onChange={(e) => handleUpdate(idx, { end: e.target.value })}
+                      />
+                    </div>
+                    {(data.leaveType === 'half' || data.leaveType === 'half-half') && (
+                      <button className={styles.fitBtn} onClick={() => fitTo8Hours(idx)}>
+                        8시간 맞추기
+                      </button>
+                    )}
                   </div>
                 ) : (
-                  <div className={styles.manualGroup}>
-                    <div className={styles.inputWithLabel}>
-                      <input
-                        type='number'
-                        placeholder='0'
-                        value={data.manualHours}
-                        onChange={(e) => handleUpdate(idx, { manualHours: e.target.value })}
-                      />
-                      <span>시간</span>
-                    </div>
-                    <div className={styles.inputWithLabel}>
-                      <input
-                        type='number'
-                        placeholder='0'
-                        value={data.manualMinutes}
-                        onChange={(e) => handleUpdate(idx, { manualMinutes: e.target.value })}
-                      />
-                      <span>분</span>
-                    </div>
+                  <div className={styles.manualInputs}>
+                    <input
+                      type='number'
+                      placeholder='시간'
+                      value={data.manualHours}
+                      onChange={(e) => handleUpdate(idx, { manualHours: e.target.value })}
+                    />
+                    <input
+                      type='number'
+                      placeholder='분'
+                      value={data.manualMinutes}
+                      onChange={(e) => handleUpdate(idx, { manualMinutes: e.target.value })}
+                    />
                   </div>
                 )}
               </div>
             )}
-            <div className={styles.dayTotal}>
-              인정 시간: {formatMinutesToKorean(getDailyMinutes(data))}
+            <div className={styles.subtotal}>
+              일 인정 시간: {formatMinutesToKorean(getDailyMinutes(data))}
             </div>
           </div>
         ))}
